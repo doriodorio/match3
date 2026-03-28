@@ -67,8 +67,6 @@
             const [imageError, setImageError] = useState(false);
             const [explosions, setExplosions] = useState({});
             const [hintIndices, setHintIndices] = useState(null);
-            const [dragStartPos, setDragStartPos] = useState(null); // Added tracking for swipes
-            const [hintsLeft, setHintsLeft] = useState(3); // Track remaining hints
 
             const loadSpritesFromFolder = useCallback(async () => {
                 setLoading(true);
@@ -159,7 +157,6 @@
                 setHintIndices(null);
                 setIsExploding(false);
                 setExplosions({});
-                setHintsLeft(3); // Reset hints on new game
             }, [allAvailableSprites]);
 
             useEffect(() => {
@@ -378,79 +375,31 @@
                 return () => clearTimeout(timer);
             }, [board, isSwapping, isGameOver, isExploding, numColors, sprites]);
 
-            // Replaced handleSquareClick with Pointer Events for Click + Swipe/Drag support
-            const handlePointerDown = (e, idx) => {
+            const handleSquareClick = (idx) => {
                 if (isSwapping || board[idx] === null || isGameOver || isExploding) return;
                 setHintIndices(null);
-                
-                // Capture the pointer so we can track the drag even if the finger/mouse leaves the tile
-                try { e.target.setPointerCapture(e.pointerId); } catch (err) {}
-                
-                setDragStartPos({ x: e.clientX, y: e.clientY, idx: idx });
-            };
 
-            const handlePointerUp = (e) => {
-                if (!dragStartPos) return;
-                try { e.target.releasePointerCapture(e.pointerId); } catch (err) {}
+                if (selectedIdx === null) {
+                    setSelectedIdx(idx);
+                } else {
+                    if (selectedIdx === idx) {
+                        setSelectedIdx(null); 
+                        return;
+                    }
 
-                const deltaX = e.clientX - dragStartPos.x;
-                const deltaY = e.clientY - dragStartPos.y;
-                const SWIPE_THRESHOLD = 30; // Minimum drag distance to count as a swipe
+                    const isAdjacent = (
+                        (idx === selectedIdx - 1 && selectedIdx % WIDTH !== 0) ||
+                        (idx === selectedIdx + 1 && selectedIdx % WIDTH !== WIDTH - 1) ||
+                        (idx === selectedIdx - WIDTH) ||
+                        (idx === selectedIdx + WIDTH)
+                    );
 
-                // If movement was small, treat it as a standard Tap/Click
-                if (Math.abs(deltaX) < SWIPE_THRESHOLD && Math.abs(deltaY) < SWIPE_THRESHOLD) {
-                    const idx = dragStartPos.idx;
-                    if (selectedIdx === null) {
-                        setSelectedIdx(idx);
+                    if (isAdjacent) {
+                        swapPieces(selectedIdx, idx);
                     } else {
-                        if (selectedIdx === idx) {
-                            setSelectedIdx(null); 
-                        } else {
-                            const isAdjacent = (
-                                (idx === selectedIdx - 1 && selectedIdx % WIDTH !== 0) ||
-                                (idx === selectedIdx + 1 && selectedIdx % WIDTH !== WIDTH - 1) ||
-                                (idx === selectedIdx - WIDTH) ||
-                                (idx === selectedIdx + WIDTH)
-                            );
-
-                            if (isAdjacent) {
-                                swapPieces(selectedIdx, idx);
-                            } else {
-                                setSelectedIdx(idx);
-                            }
-                        }
-                    }
-                    setDragStartPos(null);
-                    return;
-                }
-
-                // If movement was large, treat it as a Drag/Swipe!
-                let targetIdx = null;
-                const startIdx = dragStartPos.idx;
-
-                if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                    // Horizontal drag
-                    if (deltaX > 0 && startIdx % WIDTH !== WIDTH - 1) {
-                        targetIdx = startIdx + 1; // Right
-                    } else if (deltaX < 0 && startIdx % WIDTH !== 0) {
-                        targetIdx = startIdx - 1; // Left
-                    }
-                } else {
-                    // Vertical drag
-                    if (deltaY > 0 && Math.floor(startIdx / WIDTH) !== WIDTH - 1) {
-                        targetIdx = startIdx + WIDTH; // Down
-                    } else if (deltaY < 0 && Math.floor(startIdx / WIDTH) !== 0) {
-                        targetIdx = startIdx - WIDTH; // Up
+                        setSelectedIdx(idx);
                     }
                 }
-
-                if (targetIdx !== null) {
-                    swapPieces(startIdx, targetIdx);
-                } else {
-                    setSelectedIdx(null); // Invalid swipe direction (against a wall)
-                }
-                
-                setDragStartPos(null);
             };
 
             const swapPieces = (idx1, idx2) => {
@@ -493,11 +442,10 @@
             };
 
             const showHint = () => {
-                if (isSwapping || isGameOver || isExploding || !board || hintsLeft <= 0) return;
+                if (isSwapping || isGameOver || isExploding || !board) return;
                 const move = getAvailableMove(board);
                 if (move) {
                     setHintIndices(move);
-                    setHintsLeft(prev => prev - 1); // Decrease hint count
                 }
             };
 
@@ -531,16 +479,8 @@
                         </div>
                         
                         <div className="flex space-x-2 sm:space-x-3">
-                            <button 
-                                onClick={showHint} 
-                                disabled={hintsLeft <= 0}
-                                className={`relative p-3 rounded-xl transition-colors shadow ${hintsLeft > 0 ? 'bg-pink-600 hover:bg-pink-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`} 
-                                title="Show Hint"
-                            >
+                            <button onClick={showHint} className="p-3 bg-pink-600 hover:bg-pink-500 text-white rounded-xl transition-colors shadow" title="Show Hint">
                                 <LightbulbIcon className="w-5 h-5" />
-                                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-slate-800">
-                                    {hintsLeft}
-                                </span>
                             </button>
                             <button onClick={createBoard} className="p-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition-colors shadow" title="Restart Game">
                                 <RefreshIcon className="w-5 h-5" />
@@ -589,14 +529,7 @@
                                 const explosion = explosions[index];
                                 
                                 return (
-                                    <div 
-                                        key={index} 
-                                        onPointerDown={(e) => handlePointerDown(e, index)}
-                                        onPointerUp={handlePointerUp}
-                                        onPointerCancel={() => setDragStartPos(null)}
-                                        className={`relative w-full aspect-square cursor-pointer`}
-                                        style={{ touchAction: 'none' }}
-                                    >
+                                    <div key={index} onClick={() => handleSquareClick(index)} className={`relative w-full aspect-square cursor-pointer`}>
                                         <div
                                             className={`
                                                 w-full h-full rounded-sm transition-all duration-200 ease-in-out
@@ -645,7 +578,7 @@
                     </div>
 
                     <div className="mt-8 text-slate-500 text-sm max-w-md text-center">
-                        <p>Swipe or tap two adjacent tiles to swap them. Match 3 or more of the same icon to score points.</p>
+                        <p>Tap two adjacent tiles to swap them. Match 3 or more of the same icon to score points.</p>
                     </div>
                 </div>
             );
