@@ -50,6 +50,8 @@
         const WIDTH = 8;
         const REPO_FOLDER_API = 'https://api.github.com/repos/doriodorio/match3/contents/gameicons';
         const EXPLOSION_GIF_URL = 'https://raw.githubusercontent.com/doriodorio/match3/main/effecticons/transexplosion.gif';
+        const SPECTACULAR_SOUND_URL = 'https://raw.githubusercontent.com/doriodorio/match3/main/sounds/spectacular.mp3';
+        const VICTORY_SOUND_URL = 'https://raw.githubusercontent.com/doriodorio/match3/main/sounds/victory.mp3';
         const FALLBACK_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
 
         function App() {
@@ -188,14 +190,18 @@
             const checkForMatches = (currentBoard) => {
                 const matchedIndices = new Set();
                 
-                // Find which IDs currently belong to "Bibi" and "Trump"
+                // Find which IDs currently belong to special characters
                 const bibiIndex = sprites.findIndex(url => url && url.includes('icons2_11.png'));
                 const trumpIndex = sprites.findIndex(url => url && url.includes('icons2_12.png'));
+                const icon13Index = sprites.findIndex(url => url && url.includes('icons2_13.png'));
+                const icon27Index = sprites.findIndex(url => url && url.includes('icons2_27.png'));
+                const icon30Index = sprites.findIndex(url => url && url.includes('icons2_30.png'));
                 
                 const bibiRows = new Set();
                 const bibiCols = new Set();
                 const trumpRows = new Set();
                 const trumpCols = new Set();
+                let icon13Matched = false;
 
                 for (let r = 0; r < WIDTH; r++) {
                     for (let c = 0; c < WIDTH - 2; c++) {
@@ -212,6 +218,10 @@
                                 trumpCols.add(c);
                                 trumpCols.add(c + 1);
                                 trumpCols.add(c + 2);
+                            }
+                            // If it's icon 13, trigger its special power
+                            if (icon13Index !== -1 && currentBoard[i] === icon13Index) {
+                                icon13Matched = true;
                             }
                         }
                     }
@@ -232,6 +242,10 @@
                                 trumpRows.add(r);
                                 trumpRows.add(r + 1);
                                 trumpRows.add(r + 2);
+                            }
+                            // If it's icon 13, trigger its special power
+                            if (icon13Index !== -1 && currentBoard[i] === icon13Index) {
+                                icon13Matched = true;
                             }
                         }
                     }
@@ -276,6 +290,16 @@
                 trumpCols.forEach(c => {
                     for (let r = 0; r < WIDTH; r++) matchedIndices.add(r * WIDTH + c);
                 });
+
+                // Apply Icon 13's Power: Destroy all 27s and 30s AFTER flood fill
+                if (icon13Matched) {
+                    for (let i = 0; i < WIDTH * WIDTH; i++) {
+                        if ((icon27Index !== -1 && currentBoard[i] === icon27Index) || 
+                            (icon30Index !== -1 && currentBoard[i] === icon30Index)) {
+                            matchedIndices.add(i);
+                        }
+                    }
+                }
 
                 return Array.from(matchedIndices);
             };
@@ -343,6 +367,55 @@
                     let matches = checkForMatches(currentBoard);
 
                     if (matches.length > 0) {
+                        
+                        // Check if Trump was matched directly to play sound effect
+                        const trumpIndex = sprites.findIndex(url => url && url.includes('icons2_12.png'));
+                        let trumpMatched = false;
+                        
+                        if (trumpIndex !== -1) {
+                            for (let r = 0; r < WIDTH; r++) {
+                                for (let c = 0; c < WIDTH - 2; c++) {
+                                    const i = r * WIDTH + c;
+                                    if (currentBoard[i] === trumpIndex && currentBoard[i + 1] === trumpIndex && currentBoard[i + 2] === trumpIndex) trumpMatched = true;
+                                }
+                            }
+                            for (let c = 0; c < WIDTH; c++) {
+                                for (let r = 0; r < WIDTH - 2; r++) {
+                                    const i = r * WIDTH + c;
+                                    if (currentBoard[i] === trumpIndex && currentBoard[i + WIDTH] === trumpIndex && currentBoard[i + WIDTH * 2] === trumpIndex) trumpMatched = true;
+                                }
+                            }
+                        }
+
+                        if (trumpMatched) {
+                            const audio = new Audio(SPECTACULAR_SOUND_URL);
+                            audio.play().catch(e => console.log("Audio play failed:", e));
+                        }
+
+                        // Check if Bibi was matched directly to play sound effect
+                        const bibiIndex = sprites.findIndex(url => url && url.includes('icons2_11.png'));
+                        let bibiMatched = false;
+                        
+                        if (bibiIndex !== -1) {
+                            for (let r = 0; r < WIDTH; r++) {
+                                for (let c = 0; c < WIDTH - 2; c++) {
+                                    const i = r * WIDTH + c;
+                                    if (currentBoard[i] === bibiIndex && currentBoard[i + 1] === bibiIndex && currentBoard[i + 2] === bibiIndex) bibiMatched = true;
+                                }
+                            }
+                            for (let c = 0; c < WIDTH; c++) {
+                                for (let r = 0; r < WIDTH - 2; r++) {
+                                    const i = r * WIDTH + c;
+                                    if (currentBoard[i] === bibiIndex && currentBoard[i + WIDTH] === bibiIndex && currentBoard[i + WIDTH * 2] === bibiIndex) bibiMatched = true;
+                                }
+                            }
+                        }
+
+                        if (bibiMatched) {
+                            const audio = new Audio(VICTORY_SOUND_URL);
+                            audio.play().catch(e => console.log("Audio play failed:", e));
+                        }
+
                         setIsExploding(true);
                         setScore(s => s + matches.length * 10);
 
