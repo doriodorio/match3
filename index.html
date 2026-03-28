@@ -55,6 +55,7 @@
         function App() {
             const [board, setBoard] = useState(null);
             const [score, setScore] = useState(0);
+            const [allAvailableSprites, setAllAvailableSprites] = useState([]);
             const [sprites, setSprites] = useState([]);
             const [numColors, setNumColors] = useState(6);
             const [loading, setLoading] = useState(true);
@@ -83,18 +84,15 @@
                     const loadedSprites = imageFiles.map(f => f.download_url);
 
                     if (loadedSprites.length >= 3) {
-                        setSprites(loadedSprites);
-                        setNumColors(loadedSprites.length);
+                        setAllAvailableSprites(loadedSprites);
                     } else {
                         console.warn(`Folder only contained ${loadedSprites.length} valid images. Expected at least 3.`);
-                        setSprites(FALLBACK_COLORS);
-                        setNumColors(FALLBACK_COLORS.length);
+                        setAllAvailableSprites(FALLBACK_COLORS);
                         setImageError(true);
                     }
                 } catch (err) {
                     console.error("Error loading from folder:", err);
-                    setSprites(FALLBACK_COLORS);
-                    setNumColors(FALLBACK_COLORS.length);
+                    setAllAvailableSprites(FALLBACK_COLORS);
                     setImageError(true);
                 } finally {
                     setLoading(false);
@@ -106,9 +104,41 @@
             }, [loadSpritesFromFolder]);
 
             const createBoard = useCallback(() => {
+                if (allAvailableSprites.length === 0) return;
+
+                let activeSprites = allAvailableSprites;
+                // Limit the maximum number of distinct items on the board to 9
+                if (allAvailableSprites.length > 9) {
+                    const shuffled = [...allAvailableSprites].sort(() => 0.5 - Math.random());
+                    activeSprites = shuffled.slice(0, 9);
+                    
+                    // Guarantee Bibi or Trump is in the active list
+                    const hasBibi = activeSprites.some(url => url.includes('icons2_11'));
+                    const hasTrump = activeSprites.some(url => url.includes('icons2_12'));
+                    
+                    if (!hasBibi && !hasTrump) {
+                        const bibiUrl = allAvailableSprites.find(url => url.includes('icons2_11'));
+                        const trumpUrl = allAvailableSprites.find(url => url.includes('icons2_12'));
+                        
+                        const candidates = [];
+                        if (bibiUrl) candidates.push(bibiUrl);
+                        if (trumpUrl) candidates.push(trumpUrl);
+                        
+                        if (candidates.length > 0) {
+                            // Pick one randomly and force it into the active array
+                            const forceItem = candidates[Math.floor(Math.random() * candidates.length)];
+                            activeSprites[0] = forceItem; 
+                        }
+                    }
+                }
+                
+                setSprites(activeSprites);
+                const activeNumColors = activeSprites.length;
+                setNumColors(activeNumColors);
+
                 const newBoard = [];
                 for (let i = 0; i < WIDTH * WIDTH; i++) {
-                    let randomColor = Math.floor(Math.random() * numColors);
+                    let randomColor = Math.floor(Math.random() * activeNumColors);
                     let col = i % WIDTH;
                     let row = Math.floor(i / WIDTH);
                     
@@ -116,7 +146,7 @@
                         (col >= 2 && newBoard[i - 1] === randomColor && newBoard[i - 2] === randomColor) ||
                         (row >= 2 && newBoard[i - WIDTH] === randomColor && newBoard[i - WIDTH * 2] === randomColor)
                     ) {
-                        randomColor = Math.floor(Math.random() * numColors);
+                        randomColor = Math.floor(Math.random() * activeNumColors);
                     }
                     newBoard.push(randomColor);
                 }
@@ -127,22 +157,59 @@
                 setHintIndices(null);
                 setIsExploding(false);
                 setExplosions({});
-            }, [numColors]);
+            }, [allAvailableSprites]);
 
             useEffect(() => {
-                if (!loading && !board) {
+                if (!loading && !board && allAvailableSprites.length > 0) {
                     createBoard();
                 }
-            }, [loading, board, createBoard]);
+            }, [loading, board, createBoard, allAvailableSprites]);
+
+            const handleFileUpload = (e) => {
+                const files = Array.from(e.target.files);
+                if (files.length > 0) {
+                    const loadedSprites = files
+                        .filter(f => f.type.startsWith('image/'))
+                        .map(f => URL.createObjectURL(f));
+                        
+                    if (loadedSprites.length >= 3) {
+                        setAllAvailableSprites(loadedSprites);
+                        setImageError(false);
+                        setBoard(null); // Forces board recreation with new sprites
+                    } else {
+                        alert(`Please select at least 3 images.`);
+                    }
+                }
+            };
 
             const checkForMatches = (currentBoard) => {
                 const matchedIndices = new Set();
+                
+                // Find which IDs currently belong to "Bibi" and "Trump"
+                const bibiIndex = sprites.findIndex(url => url && url.includes('icons2_11.png'));
+                const trumpIndex = sprites.findIndex(url => url && url.includes('icons2_12.png'));
+                
+                const bibiRows = new Set();
+                const bibiCols = new Set();
+                const trumpRows = new Set();
+                const trumpCols = new Set();
 
                 for (let r = 0; r < WIDTH; r++) {
                     for (let c = 0; c < WIDTH - 2; c++) {
                         const i = r * WIDTH + c;
                         if (currentBoard[i] !== null && currentBoard[i] === currentBoard[i + 1] && currentBoard[i] === currentBoard[i + 2]) {
                             matchedIndices.add(i); matchedIndices.add(i + 1); matchedIndices.add(i + 2);
+                            // If it's a Bibi match, mark this row for total destruction
+                            if (bibiIndex !== -1 && currentBoard[i] === bibiIndex) {
+                                bibiRows.add(r);
+                            }
+                            // If it's a Trump match, mark both the row and the specific columns
+                            if (trumpIndex !== -1 && currentBoard[i] === trumpIndex) {
+                                trumpRows.add(r);
+                                trumpCols.add(c);
+                                trumpCols.add(c + 1);
+                                trumpCols.add(c + 2);
+                            }
                         }
                     }
                 }
@@ -152,6 +219,17 @@
                         const i = r * WIDTH + c;
                         if (currentBoard[i] !== null && currentBoard[i] === currentBoard[i + WIDTH] && currentBoard[i] === currentBoard[i + WIDTH * 2]) {
                             matchedIndices.add(i); matchedIndices.add(i + WIDTH); matchedIndices.add(i + WIDTH * 2);
+                            // If it's a Bibi match, mark this column for total destruction
+                            if (bibiIndex !== -1 && currentBoard[i] === bibiIndex) {
+                                bibiCols.add(c);
+                            }
+                            // If it's a Trump match, mark both the column and the specific rows
+                            if (trumpIndex !== -1 && currentBoard[i] === trumpIndex) {
+                                trumpCols.add(c);
+                                trumpRows.add(r);
+                                trumpRows.add(r + 1);
+                                trumpRows.add(r + 2);
+                            }
                         }
                     }
                 }
@@ -179,6 +257,23 @@
                         }
                     }
                 }
+
+                // Apply the Bibi Line Clear Power AFTER flood fill
+                bibiRows.forEach(r => {
+                    for (let c = 0; c < WIDTH; c++) matchedIndices.add(r * WIDTH + c);
+                });
+                bibiCols.forEach(c => {
+                    for (let r = 0; r < WIDTH; r++) matchedIndices.add(r * WIDTH + c);
+                });
+
+                // Apply the Trump Cross Clear Power AFTER flood fill
+                trumpRows.forEach(r => {
+                    for (let c = 0; c < WIDTH; c++) matchedIndices.add(r * WIDTH + c);
+                });
+                trumpCols.forEach(c => {
+                    for (let r = 0; r < WIDTH; r++) matchedIndices.add(r * WIDTH + c);
+                });
+
                 return Array.from(matchedIndices);
             };
 
@@ -278,7 +373,7 @@
                 }, 250);
 
                 return () => clearTimeout(timer);
-            }, [board, isSwapping, isGameOver, isExploding]);
+            }, [board, isSwapping, isGameOver, isExploding, numColors, sprites]);
 
             const handleSquareClick = (idx) => {
                 if (isSwapping || board[idx] === null || isGameOver || isExploding) return;
