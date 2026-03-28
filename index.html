@@ -54,6 +54,19 @@
         const VICTORY_SOUND_URL = 'https://raw.githubusercontent.com/doriodorio/match3/main/sounds/victory.mp3';
         const FALLBACK_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
 
+        // Initialize Audio Objects Globally for Mobile Browser Authorization
+        const audioSpectacular = new Audio(SPECTACULAR_SOUND_URL);
+        const audioVictory = new Audio(VICTORY_SOUND_URL);
+        let isAudioUnlocked = false;
+
+        function unlockAudio() {
+            if (isAudioUnlocked) return;
+            // Play and immediately pause to "unlock" the audio context for these elements on mobile
+            audioSpectacular.play().then(() => { audioSpectacular.pause(); audioSpectacular.currentTime = 0; }).catch(() => {});
+            audioVictory.play().then(() => { audioVictory.pause(); audioVictory.currentTime = 0; }).catch(() => {});
+            isAudioUnlocked = true;
+        }
+
         function App() {
             const [board, setBoard] = useState(null);
             const [score, setScore] = useState(0);
@@ -388,8 +401,8 @@
                         }
 
                         if (trumpMatched) {
-                            const audio = new Audio(SPECTACULAR_SOUND_URL);
-                            audio.play().catch(e => console.log("Audio play failed:", e));
+                            audioSpectacular.currentTime = 0;
+                            audioSpectacular.play().catch(e => console.log("Audio play failed:", e));
                         }
 
                         // Check if Bibi was matched directly to play sound effect
@@ -412,8 +425,8 @@
                         }
 
                         if (bibiMatched) {
-                            const audio = new Audio(VICTORY_SOUND_URL);
-                            audio.play().catch(e => console.log("Audio play failed:", e));
+                            audioVictory.currentTime = 0;
+                            audioVictory.play().catch(e => console.log("Audio play failed:", e));
                         }
 
                         setIsExploding(true);
@@ -585,7 +598,11 @@
             }
 
             return (
-                <div className="min-h-screen bg-slate-950 flex flex-col items-center py-10 px-4 font-sans relative">
+                <div 
+                    className="min-h-screen bg-slate-950 flex flex-col items-center py-10 px-4 font-sans relative"
+                    onClick={unlockAudio}
+                    onTouchStart={unlockAudio}
+                >
                     
                     {/* Game Header Image */}
                     <img 
