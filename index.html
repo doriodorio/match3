@@ -585,7 +585,13 @@
                 }
             };
 
-            const showHint = () => {
+            const showHint = (e) => {
+                // Secret instant lose cheat
+                if (e && e.shiftKey) {
+                    setIsGameOver(true);
+                    return;
+                }
+
                 if (isSwapping || isGameOver || isExploding || !board || hintsLeft <= 0) return;
                 const move = getAvailableMove(board);
                 if (move) {
@@ -637,7 +643,6 @@
                             </button>
                             <button 
                                 onClick={showHint} 
-                                disabled={hintsLeft <= 0}
                                 className={`relative p-3 rounded-xl transition-colors shadow ${hintsLeft > 0 ? 'bg-pink-600 hover:bg-pink-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`} 
                                 title="Show Hint"
                             >
@@ -677,7 +682,7 @@
                                         אתם יכולים לשחק שוב או ללמוד ליצור משחקים בעצמכם.
                                     </p>
 
-                                    <div className="flex flex-col gap-3 w-full">
+                                    <div className="flex flex-col gap-3 w-full items-center">
                                         <button onClick={createBoard} className="flex items-center justify-center px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-2xl font-bold text-xl transition-all transform hover:scale-105 active:scale-95 shadow-[0_0_40px_-10px_rgba(59,130,246,0.5)] border border-blue-400/30 w-full">
                                             <RefreshIcon className="w-6 h-6 mr-3" />
                                             שחקו שוב
@@ -691,6 +696,13 @@
                                         >
                                             למדו ליצור משחקים
                                         </a>
+
+                                        {/* Total Design Logo */}
+                                        <img 
+                                            src="https://raw.githubusercontent.com/doriodorio/match3/main/more_graphics/total%20design%20-%20one%20lines%20white.png" 
+                                            alt="Total Design" 
+                                            className="mt-5 max-h-10 sm:max-h-12 w-auto object-contain opacity-70 hover:opacity-100 transition-opacity"
+                                        />
                                     </div>
                                 </div>
                             </div>
