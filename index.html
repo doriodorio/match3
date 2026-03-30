@@ -35,8 +35,6 @@
         .animate-explode {
           animation: explode-anim 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
         }
-        
-        /* Custom scrollbar for leaderboard */
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
@@ -46,46 +44,46 @@
 <body>
     <div id="root"></div>
 
-    <!-- Note: using data-type="module" so we can import Firebase libraries directly -->
     <script type="text/babel" data-type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const { useState, useEffect, useCallback } = React;
 
-        // --- Firebase Initialization ---
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const app = firebaseConfig ? initializeApp(firebaseConfig) : null;
-        const auth = app ? getAuth(app) : null;
-        const db = app ? getFirestore(app) : null;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'match3-default-app-id';
+        // Dynamic Firebase Configuration
+        let firebaseConfig;
+        let isCanvasEnvironment = false;
+
+        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+            firebaseConfig = JSON.parse(__firebase_config);
+            isCanvasEnvironment = true;
+        } else {
+            firebaseConfig = {
+                apiKey: "AIzaSyCMi0mRQhlXEVnH47fNcC7KewdWeJA79Vw",
+                authDomain: "finalvictory-12aef.firebaseapp.com",
+                projectId: "finalvictory-12aef",
+                storageBucket: "finalvictory-12aef.firebasestorage.app",
+                messagingSenderId: "949790636961",
+                appId: "1:949790636961:web:00e0149a61ebbe7859e9e0",
+                measurementId: "G-5YWTWMQEWW"
+            };
+        }
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const globalAppId = typeof __app_id !== 'undefined' ? __app_id : 'match3-global';
 
         // SVG Icons
-        const TrophyIcon = ({ className }) => (
-            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7c0 6 6 10 6 10s6-4 6-10Z"/></svg>
-        );
-        const LightbulbIcon = ({ className }) => (
-            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.9 1.2 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
-        );
-        const RefreshIcon = ({ className }) => (
-            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-        );
-        const ShareIcon = ({ className }) => (
-            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
-        );
-        const Volume2Icon = ({ className }) => (
-            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
-        );
-        const VolumeXIcon = ({ className }) => (
-            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
-        );
-        const PlayIcon = ({ className }) => (
-            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        );
-        const XIcon = ({ className }) => (
-            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        );
+        const TrophyIcon = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7c0 6 6 10 6 10s6-4 6-10Z"/></svg>;
+        const LightbulbIcon = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.9 1.2 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>;
+        const RefreshIcon = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>;
+        const ShareIcon = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>;
+        const Volume2Icon = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>;
+        const VolumeXIcon = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>;
+        const PlayIcon = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>;
+        const XIcon = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
 
         const WIDTH = 8;
         const REPO_FOLDER_API = 'https://api.github.com/repos/doriodorio/match3/contents/gameicons';
@@ -94,7 +92,6 @@
         const VICTORY_SOUND_URL = 'https://raw.githubusercontent.com/doriodorio/match3/main/sounds/victory.mp3';
         const FALLBACK_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
 
-        // Initialize Audio Objects Globally for Mobile Browser Authorization
         const audioSpectacular = new Audio(SPECTACULAR_SOUND_URL);
         const audioVictory = new Audio(VICTORY_SOUND_URL);
         let isAudioUnlocked = false;
@@ -118,7 +115,6 @@
             const [isGameOver, setIsGameOver] = useState(false);
             const [isExploding, setIsExploding] = useState(false);
             const [toastMessage, setToastMessage] = useState('');
-            const [imageError, setImageError] = useState(false);
             const [explosions, setExplosions] = useState({});
             const [hintIndices, setHintIndices] = useState(null);
             const [dragStartPos, setDragStartPos] = useState(null);
@@ -126,19 +122,16 @@
             const [soundEnabled, setSoundEnabled] = useState(true);
             const [showInstructions, setShowInstructions] = useState(false);
             
-            // Leaderboard State
             const [user, setUser] = useState(null);
             const [leaderboard, setLeaderboard] = useState([]);
             const [playerName, setPlayerName] = useState('');
             const [isScoreSubmitted, setIsScoreSubmitted] = useState(false);
             const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
 
-            // 1. Initialize Firebase Auth
             useEffect(() => {
-                if (!auth) return;
                 const initAuth = async () => {
                     try {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        if (isCanvasEnvironment && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                             await signInWithCustomToken(auth, __initial_auth_token);
                         } else {
                             await signInAnonymously(auth);
@@ -148,378 +141,187 @@
                     }
                 };
                 initAuth();
-
                 const unsubscribe = onAuthStateChanged(auth, setUser);
                 return () => unsubscribe();
             }, []);
 
-            // 2. Fetch Leaderboard Data
             useEffect(() => {
                 if (!user || !db) return;
-                const leaderboardRef = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
-                
+                const leaderboardRef = collection(db, 'artifacts', globalAppId, 'public', 'data', 'leaderboard');
                 const unsubscribe = onSnapshot(leaderboardRef, (snapshot) => {
-                    const scores = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    // Sort locally as per RULE 2
-                    scores.sort((a, b) => b.score - a.score);
-                    setLeaderboard(scores.slice(0, 10)); // Top 10
-                }, (error) => {
-                    console.error("Error fetching leaderboard:", error);
-                });
-
+                    const scores = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => b.score - a.score);
+                    setLeaderboard(scores.slice(0, 10));
+                }, (error) => console.error("Error fetching leaderboard:", error));
                 return () => unsubscribe();
             }, [user]);
 
             useEffect(() => {
-                const hasSeenInstructions = localStorage.getItem('match3_hasSeenInstructions');
-                if (!hasSeenInstructions) {
-                    setShowInstructions(true);
-                }
+                if (!localStorage.getItem('match3_hasSeenInstructions')) setShowInstructions(true);
             }, []);
 
             const dismissInstructions = () => {
                 localStorage.setItem('match3_hasSeenInstructions', 'true');
-                setShowInstructions(false);
-                unlockAudio();
+                setShowInstructions(false); unlockAudio();
             };
 
             const submitScore = async (e) => {
                 e.preventDefault();
-                if (!user || !db || !playerName.trim() || isScoreSubmitted) return;
-                
+                if (!user) {
+                    setToastMessage("שגיאה: אינך מחובר. ודאו שהפעלתם Anonymous Auth.");
+                    setTimeout(() => setToastMessage(''), 5000); return;
+                }
+                if (!db || !playerName.trim() || isScoreSubmitted) return;
                 try {
-                    const leaderboardRef = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
-                    await addDoc(leaderboardRef, {
-                        name: playerName.trim(),
-                        score: score,
-                        timestamp: Date.now(),
-                        userId: user.uid
+                    await addDoc(collection(db, 'artifacts', globalAppId, 'public', 'data', 'leaderboard'), {
+                        name: playerName.trim(), score: score, timestamp: Date.now(), userId: user.uid
                     });
                     setIsScoreSubmitted(true);
                 } catch (error) {
-                    console.error("Error submitting score:", error);
-                    setToastMessage("Failed to submit score.");
-                    setTimeout(() => setToastMessage(''), 3000);
+                    setToastMessage("שגיאה בשליחת התוצאה למסד הנתונים.");
+                    setTimeout(() => setToastMessage(''), 5000);
                 }
             };
 
             const loadSpritesFromFolder = useCallback(async () => {
                 setLoading(true);
-                setImageError(false);
-                
                 try {
                     const response = await fetch(`${REPO_FOLDER_API}?t=${new Date().getTime()}`);
-                    if (!response.ok) throw new Error("Failed to fetch folder from GitHub API");
-                    
+                    if (!response.ok) throw new Error("Failed to fetch folder");
                     const files = await response.json();
-                    const imageFiles = files
-                        .filter(f => f.type === 'file' && f.name.match(/\.(png|jpe?g|gif|webp|svg)$/i))
-                        .sort((a, b) => a.name.localeCompare(b.name));
-
+                    const imageFiles = files.filter(f => f.type === 'file' && f.name.match(/\.(png|jpe?g|gif|webp|svg)$/i)).sort((a, b) => a.name.localeCompare(b.name));
                     const loadedSprites = imageFiles.map(f => f.download_url);
-
-                    if (loadedSprites.length >= 3) {
-                        setAllAvailableSprites(loadedSprites);
-                    } else {
-                        setAllAvailableSprites(FALLBACK_COLORS);
-                        setImageError(true);
-                    }
+                    if (loadedSprites.length >= 3) setAllAvailableSprites(loadedSprites);
+                    else setAllAvailableSprites(FALLBACK_COLORS);
                 } catch (err) {
-                    console.error("Error loading from folder:", err);
                     setAllAvailableSprites(FALLBACK_COLORS);
-                    setImageError(true);
                 } finally {
                     setLoading(false);
                 }
             }, []);
 
-            useEffect(() => {
-                loadSpritesFromFolder();
-            }, [loadSpritesFromFolder]);
+            useEffect(() => { loadSpritesFromFolder(); }, [loadSpritesFromFolder]);
 
             const createBoard = useCallback(() => {
                 if (allAvailableSprites.length === 0) return;
-
                 let activeSprites = allAvailableSprites;
                 if (allAvailableSprites.length > 9) {
                     const shuffled = [...allAvailableSprites].sort(() => 0.5 - Math.random());
                     activeSprites = shuffled.slice(0, 9);
-                    
                     const hasBibi = activeSprites.some(url => url.includes('icons2_11'));
                     const hasTrump = activeSprites.some(url => url.includes('icons2_12'));
-                    
                     if (!hasBibi && !hasTrump) {
-                        const bibiUrl = allAvailableSprites.find(url => url.includes('icons2_11'));
-                        const trumpUrl = allAvailableSprites.find(url => url.includes('icons2_12'));
-                        
-                        const candidates = [];
-                        if (bibiUrl) candidates.push(bibiUrl);
-                        if (trumpUrl) candidates.push(trumpUrl);
-                        
-                        if (candidates.length > 0) {
-                            const forceItem = candidates[Math.floor(Math.random() * candidates.length)];
-                            activeSprites[0] = forceItem; 
-                        }
+                        const candidates = [allAvailableSprites.find(url => url.includes('icons2_11')), allAvailableSprites.find(url => url.includes('icons2_12'))].filter(Boolean);
+                        if (candidates.length > 0) activeSprites[0] = candidates[Math.floor(Math.random() * candidates.length)];
                     }
                 }
-                
                 setSprites(activeSprites);
-                const activeNumColors = activeSprites.length;
-                setNumColors(activeNumColors);
-
+                setNumColors(activeSprites.length);
                 const newBoard = [];
-                for (let i = 0; i < WIDTH * WIDTH; i++) {
-                    let randomColor = Math.floor(Math.random() * activeNumColors);
-                    let col = i % WIDTH;
-                    let row = Math.floor(i / WIDTH);
-                    
-                    while (
-                        (col >= 2 && newBoard[i - 1] === randomColor && newBoard[i - 2] === randomColor) ||
-                        (row >= 2 && newBoard[i - WIDTH] === randomColor && newBoard[i - WIDTH * 2] === randomColor)
-                    ) {
-                        randomColor = Math.floor(Math.random() * activeNumColors);
+                for (let i = 0; i < 64; i++) {
+                    let rc = Math.floor(Math.random() * activeSprites.length);
+                    let c = i % WIDTH, r = Math.floor(i / WIDTH);
+                    while ((c >= 2 && newBoard[i-1] === rc && newBoard[i-2] === rc) || (r >= 2 && newBoard[i-WIDTH] === rc && newBoard[i-WIDTH*2] === rc)) {
+                        rc = Math.floor(Math.random() * activeSprites.length);
                     }
-                    newBoard.push(randomColor);
+                    newBoard.push(rc);
                 }
-                setBoard(newBoard);
-                setScore(0);
-                setSelectedIdx(null);
-                setIsGameOver(false);
-                setHintIndices(null);
-                setIsExploding(false);
-                setExplosions({});
-                setHintsLeft(3);
-                setIsScoreSubmitted(false);
-                setPlayerName('');
+                setBoard(newBoard); setScore(0); setSelectedIdx(null); setIsGameOver(false);
+                setHintIndices(null); setIsExploding(false); setExplosions({}); setHintsLeft(3);
+                setIsScoreSubmitted(false); setPlayerName('');
             }, [allAvailableSprites]);
 
-            useEffect(() => {
-                if (!loading && !board && allAvailableSprites.length > 0) {
-                    createBoard();
-                }
-            }, [loading, board, createBoard, allAvailableSprites]);
+            useEffect(() => { if (!loading && !board && allAvailableSprites.length > 0) createBoard(); }, [loading, board, createBoard, allAvailableSprites]);
 
-            const checkForMatches = (currentBoard) => {
-                const matchedIndices = new Set();
-                
-                const bibiIndex = sprites.findIndex(url => url && url.includes('icons2_11.png'));
-                const trumpIndex = sprites.findIndex(url => url && url.includes('icons2_12.png'));
-                const icon13Index = sprites.findIndex(url => url && url.includes('icons2_13.png'));
-                const icon27Index = sprites.findIndex(url => url && url.includes('icons2_27.png'));
-                const icon30Index = sprites.findIndex(url => url && url.includes('icons2_30.png'));
-                
-                const bibiRows = new Set();
-                const bibiCols = new Set();
-                const trumpRows = new Set();
-                const trumpCols = new Set();
-                let icon13Matched = false;
-
-                for (let r = 0; r < WIDTH; r++) {
-                    for (let c = 0; c < WIDTH - 2; c++) {
-                        const i = r * WIDTH + c;
-                        if (currentBoard[i] !== null && currentBoard[i] === currentBoard[i + 1] && currentBoard[i] === currentBoard[i + 2]) {
-                            matchedIndices.add(i); matchedIndices.add(i + 1); matchedIndices.add(i + 2);
-                            if (bibiIndex !== -1 && currentBoard[i] === bibiIndex) bibiRows.add(r);
-                            if (trumpIndex !== -1 && currentBoard[i] === trumpIndex) {
-                                trumpRows.add(r); trumpCols.add(c); trumpCols.add(c + 1); trumpCols.add(c + 2);
-                            }
-                            if (icon13Index !== -1 && currentBoard[i] === icon13Index) icon13Matched = true;
-                        }
+            const checkForMatches = (cb) => {
+                const m = new Set();
+                const sp = {
+                    b: sprites.findIndex(u => u?.includes('icons2_11')), t: sprites.findIndex(u => u?.includes('icons2_12')),
+                    i13: sprites.findIndex(u => u?.includes('icons2_13')), i27: sprites.findIndex(u => u?.includes('icons2_27')), i30: sprites.findIndex(u => u?.includes('icons2_30'))
+                };
+                const rows = new Set(), cols = new Set(), tr = new Set(), tc = new Set(); let i13M = false;
+                const chk = (i, i1, i2, r, c, isR) => {
+                    if (cb[i] !== null && cb[i] === cb[i1] && cb[i] === cb[i2]) {
+                        m.add(i).add(i1).add(i2);
+                        if (sp.b !== -1 && cb[i] === sp.b) isR ? rows.add(r) : cols.add(c);
+                        if (sp.t !== -1 && cb[i] === sp.t) { tr.add(r); tc.add(c); isR ? tc.add(c+1).add(c+2) : tr.add(r+1).add(r+2); }
+                        if (sp.i13 !== -1 && cb[i] === sp.i13) i13M = true;
                     }
-                }
-
-                for (let c = 0; c < WIDTH; c++) {
-                    for (let r = 0; r < WIDTH - 2; r++) {
-                        const i = r * WIDTH + c;
-                        if (currentBoard[i] !== null && currentBoard[i] === currentBoard[i + WIDTH] && currentBoard[i] === currentBoard[i + WIDTH * 2]) {
-                            matchedIndices.add(i); matchedIndices.add(i + WIDTH); matchedIndices.add(i + WIDTH * 2);
-                            if (bibiIndex !== -1 && currentBoard[i] === bibiIndex) bibiCols.add(c);
-                            if (trumpIndex !== -1 && currentBoard[i] === trumpIndex) {
-                                trumpCols.add(c); trumpRows.add(r); trumpRows.add(r + 1); trumpRows.add(r + 2);
-                            }
-                            if (icon13Index !== -1 && currentBoard[i] === icon13Index) icon13Matched = true;
+                };
+                for (let r=0; r<WIDTH; r++) for (let c=0; c<WIDTH-2; c++) chk(r*WIDTH+c, r*WIDTH+c+1, r*WIDTH+c+2, r, c, true);
+                for (let c=0; c<WIDTH; c++) for (let r=0; r<WIDTH-2; r++) chk(r*WIDTH+c, (r+1)*WIDTH+c, (r+2)*WIDTH+c, r, c, false);
+                const q = Array.from(m);
+                while (q.length > 0) {
+                    const idx = q.shift();
+                    if (cb[idx] === null) continue;
+                    const c = idx % WIDTH, r = Math.floor(idx / WIDTH);
+                    [idx - WIDTH, idx + WIDTH, idx - 1, idx + 1].forEach(n => {
+                        if (n >= 0 && n < 64 && cb[n] === cb[idx] && !m.has(n) && Math.abs((n%WIDTH)-c) + Math.abs(Math.floor(n/WIDTH)-r) === 1) {
+                            m.add(n); q.push(n);
                         }
-                    }
+                    });
                 }
-
-                const queue = Array.from(matchedIndices);
-                while (queue.length > 0) {
-                    const idx = queue.shift();
-                    const color = currentBoard[idx];
-                    if (color === null) continue;
-
-                    const col = idx % WIDTH;
-                    const row = Math.floor(idx / WIDTH);
-                    const neighbors = [];
-
-                    if (row > 0) neighbors.push(idx - WIDTH);
-                    if (row < WIDTH - 1) neighbors.push(idx + WIDTH);
-                    if (col > 0) neighbors.push(idx - 1);
-                    if (col < WIDTH - 1) neighbors.push(idx + 1);
-
-                    for (const n of neighbors) {
-                        if (currentBoard[n] === color && !matchedIndices.has(n)) {
-                            matchedIndices.add(n);
-                            queue.push(n);
-                        }
-                    }
-                }
-
-                bibiRows.forEach(r => { for (let c = 0; c < WIDTH; c++) matchedIndices.add(r * WIDTH + c); });
-                bibiCols.forEach(c => { for (let r = 0; r < WIDTH; r++) matchedIndices.add(r * WIDTH + c); });
-                trumpRows.forEach(r => { for (let c = 0; c < WIDTH; c++) matchedIndices.add(r * WIDTH + c); });
-                trumpCols.forEach(c => { for (let r = 0; r < WIDTH; r++) matchedIndices.add(r * WIDTH + c); });
-
-                if (icon13Matched) {
-                    for (let i = 0; i < WIDTH * WIDTH; i++) {
-                        if ((icon27Index !== -1 && currentBoard[i] === icon27Index) || 
-                            (icon30Index !== -1 && currentBoard[i] === icon30Index)) {
-                            matchedIndices.add(i);
-                        }
-                    }
-                }
-
-                return Array.from(matchedIndices);
+                rows.forEach(r => { for (let c=0; c<WIDTH; c++) m.add(r*WIDTH+c); }); cols.forEach(c => { for (let r=0; r<WIDTH; r++) m.add(r*WIDTH+c); });
+                tr.forEach(r => { for (let c=0; c<WIDTH; c++) m.add(r*WIDTH+c); }); tc.forEach(c => { for (let r=0; r<WIDTH; r++) m.add(r*WIDTH+c); });
+                if (i13M) cb.forEach((v, i) => { if (v === sp.i27 || v === sp.i30) m.add(i); });
+                return Array.from(m);
             };
 
-            const checkIfMatchesExist = (tempBoard) => {
-                for (let r = 0; r < WIDTH; r++) {
-                    for (let c = 0; c < WIDTH - 2; c++) {
-                        const i = r * WIDTH + c;
-                        if (tempBoard[i] !== null && tempBoard[i] === tempBoard[i + 1] && tempBoard[i] === tempBoard[i + 2]) return true;
-                    }
-                }
-                for (let c = 0; c < WIDTH; c++) {
-                    for (let r = 0; r < WIDTH - 2; r++) {
-                        const i = r * WIDTH + c;
-                        if (tempBoard[i] !== null && tempBoard[i] === tempBoard[i + WIDTH] && tempBoard[i] === tempBoard[i + WIDTH * 2]) return true;
-                    }
-                }
+            const checkIfMatchesExist = (tb) => {
+                for (let r=0; r<WIDTH; r++) for (let c=0; c<WIDTH-2; c++) if (tb[r*WIDTH+c] !== null && tb[r*WIDTH+c] === tb[r*WIDTH+c+1] && tb[r*WIDTH+c] === tb[r*WIDTH+c+2]) return true;
+                for (let c=0; c<WIDTH; c++) for (let r=0; r<WIDTH-2; r++) if (tb[r*WIDTH+c] !== null && tb[r*WIDTH+c] === tb[(r+1)*WIDTH+c] && tb[r*WIDTH+c] === tb[(r+2)*WIDTH+c]) return true;
                 return false;
             };
 
-            const getAvailableMove = (currentBoard) => {
-                for (let i = 0; i < WIDTH * WIDTH; i++) {
-                    const col = i % WIDTH;
-                    const row = Math.floor(i / WIDTH);
-
-                    if (col < WIDTH - 1) {
-                        const temp = [...currentBoard];
-                        [temp[i], temp[i + 1]] = [temp[i + 1], temp[i]];
-                        if (checkIfMatchesExist(temp)) return [i, i + 1];
-                    }
-                    if (row < WIDTH - 1) {
-                        const temp = [...currentBoard];
-                        [temp[i], temp[i + WIDTH]] = [temp[i + WIDTH], temp[i]];
-                        if (checkIfMatchesExist(temp)) return [i, i + WIDTH];
-                    }
+            const getAvailableMove = (cb) => {
+                for (let i=0; i<64; i++) {
+                    const c=i%WIDTH, r=Math.floor(i/WIDTH);
+                    if (c < WIDTH-1) { const t=[...cb]; [t[i],t[i+1]]=[t[i+1],t[i]]; if(checkIfMatchesExist(t)) return [i,i+1]; }
+                    if (r < WIDTH-1) { const t=[...cb]; [t[i],t[i+WIDTH]]=[t[i+WIDTH],t[i]]; if(checkIfMatchesExist(t)) return [i,i+WIDTH]; }
                 }
                 return null;
             };
 
-            const applyGravity = (currentBoard) => {
-                let newBoard = [...currentBoard];
-                for (let col = 0; col < WIDTH; col++) {
-                    let emptySpaces = 0;
-                    for (let row = WIDTH - 1; row >= 0; row--) {
-                        let index = row * WIDTH + col;
-                        if (newBoard[index] === null) {
-                            emptySpaces++;
-                        } else if (emptySpaces > 0) {
-                            newBoard[index + emptySpaces * WIDTH] = newBoard[index];
-                            newBoard[index] = null;
-                        }
+            const applyGravity = (cb) => {
+                let nb = [...cb];
+                for (let c=0; c<WIDTH; c++) {
+                    let e = 0;
+                    for (let r=WIDTH-1; r>=0; r--) {
+                        if (nb[r*WIDTH+c] === null) e++; else if (e > 0) { nb[(r+e)*WIDTH+c] = nb[r*WIDTH+c]; nb[r*WIDTH+c] = null; }
                     }
-                    for (let i = 0; i < emptySpaces; i++) {
-                        newBoard[i * WIDTH + col] = Math.floor(Math.random() * numColors);
-                    }
+                    for (let i=0; i<e; i++) nb[i*WIDTH+c] = Math.floor(Math.random() * numColors);
                 }
-                return newBoard;
+                return nb;
             };
 
             useEffect(() => {
                 if (!board || isSwapping || isGameOver || isExploding || showInstructions) return;
-
                 const timer = setTimeout(() => {
-                    let currentBoard = [...board];
-                    let matches = checkForMatches(currentBoard);
-
+                    let cb = [...board];
+                    let matches = checkForMatches(cb);
                     if (matches.length > 0) {
-                        const trumpIndex = sprites.findIndex(url => url && url.includes('icons2_12.png'));
-                        let trumpMatched = false;
-                        if (trumpIndex !== -1) {
-                            for (let r = 0; r < WIDTH; r++) {
-                                for (let c = 0; c < WIDTH - 2; c++) {
-                                    const i = r * WIDTH + c;
-                                    if (currentBoard[i] === trumpIndex && currentBoard[i + 1] === trumpIndex && currentBoard[i + 2] === trumpIndex) trumpMatched = true;
-                                }
-                            }
-                            for (let c = 0; c < WIDTH; c++) {
-                                for (let r = 0; r < WIDTH - 2; r++) {
-                                    const i = r * WIDTH + c;
-                                    if (currentBoard[i] === trumpIndex && currentBoard[i + WIDTH] === trumpIndex && currentBoard[i + WIDTH * 2] === trumpIndex) trumpMatched = true;
-                                }
-                            }
-                        }
-
-                        if (trumpMatched && soundEnabled) {
-                            audioSpectacular.currentTime = 0;
-                            audioSpectacular.play().catch(e => console.log("Audio play failed:", e));
-                        }
-
-                        const bibiIndex = sprites.findIndex(url => url && url.includes('icons2_11.png'));
-                        let bibiMatched = false;
-                        if (bibiIndex !== -1) {
-                            for (let r = 0; r < WIDTH; r++) {
-                                for (let c = 0; c < WIDTH - 2; c++) {
-                                    const i = r * WIDTH + c;
-                                    if (currentBoard[i] === bibiIndex && currentBoard[i + 1] === bibiIndex && currentBoard[i + 2] === bibiIndex) bibiMatched = true;
-                                }
-                            }
-                            for (let c = 0; c < WIDTH; c++) {
-                                for (let r = 0; r < WIDTH - 2; r++) {
-                                    const i = r * WIDTH + c;
-                                    if (currentBoard[i] === bibiIndex && currentBoard[i + WIDTH] === bibiIndex && currentBoard[i + WIDTH * 2] === bibiIndex) bibiMatched = true;
-                                }
-                            }
-                        }
-
-                        if (bibiMatched && soundEnabled) {
-                            audioVictory.currentTime = 0;
-                            audioVictory.play().catch(e => console.log("Audio play failed:", e));
-                        }
-
+                        const hasId = (id) => {
+                            const idx = sprites.findIndex(u => u?.includes(id));
+                            return idx !== -1 && matches.some(m => cb[m] === idx);
+                        };
+                        if (hasId('icons2_12') && soundEnabled) { audioSpectacular.currentTime=0; audioSpectacular.play().catch(()=>{}); }
+                        if (hasId('icons2_11') && soundEnabled) { audioVictory.currentTime=0; audioVictory.play().catch(()=>{}); }
+                        
                         setIsExploding(true);
                         setScore(s => s + matches.length * 10);
-
-                        const newExplosions = {};
-                        const timestamp = Date.now();
-                        matches.forEach(idx => {
-                            newExplosions[idx] = `${EXPLOSION_GIF_URL}?t=${timestamp}-${idx}`; 
-                        });
-                        setExplosions(prev => ({ ...prev, ...newExplosions }));
-
+                        const ts = Date.now();
+                        setExplosions(prev => ({...prev, ...Object.fromEntries(matches.map(i => [i, `${EXPLOSION_GIF_URL}?t=${ts}-${i}`]))}));
                         setTimeout(() => {
-                            matches.forEach(idx => currentBoard[idx] = null);
-                            setBoard(currentBoard); 
-                            setExplosions(prev => {
-                                const cleaned = { ...prev };
-                                matches.forEach(idx => delete cleaned[idx]);
-                                return cleaned;
-                            });
+                            matches.forEach(i => cb[i] = null);
+                            setBoard(cb);
+                            setExplosions(prev => { const c = {...prev}; matches.forEach(i => delete c[i]); return c; });
                             setIsExploding(false);
-                        }, 500); 
-
-                    } else if (currentBoard.includes(null)) {
-                        setBoard(applyGravity(currentBoard));
-                    } else {
-                        const move = getAvailableMove(currentBoard);
-                        if (!move) {
-                            setIsGameOver(true);
-                        }
+                        }, 500);
+                    } else if (cb.includes(null)) {
+                        setBoard(applyGravity(cb));
+                    } else if (!getAvailableMove(cb)) {
+                        setIsGameOver(true);
                     }
                 }, 250);
-
                 return () => clearTimeout(timer);
             }, [board, isSwapping, isGameOver, isExploding, numColors, sprites, soundEnabled, showInstructions]);
 
@@ -533,108 +335,58 @@
             const handlePointerUp = (e) => {
                 if (!dragStartPos) return;
                 try { e.target.releasePointerCapture(e.pointerId); } catch (err) {}
-
-                const deltaX = e.clientX - dragStartPos.x;
-                const deltaY = e.clientY - dragStartPos.y;
-                const SWIPE_THRESHOLD = 30;
-
-                if (Math.abs(deltaX) < SWIPE_THRESHOLD && Math.abs(deltaY) < SWIPE_THRESHOLD) {
-                    const idx = dragStartPos.idx;
-                    if (selectedIdx === null) {
-                        setSelectedIdx(idx);
-                    } else {
-                        if (selectedIdx === idx) {
-                            setSelectedIdx(null); 
-                        } else {
-                            const isAdjacent = (
-                                (idx === selectedIdx - 1 && selectedIdx % WIDTH !== 0) ||
-                                (idx === selectedIdx + 1 && selectedIdx % WIDTH !== WIDTH - 1) ||
-                                (idx === selectedIdx - WIDTH) ||
-                                (idx === selectedIdx + WIDTH)
-                            );
-
-                            if (isAdjacent) {
-                                swapPieces(selectedIdx, idx);
-                            } else {
-                                setSelectedIdx(idx);
-                            }
-                        }
+                const dx = e.clientX - dragStartPos.x, dy = e.clientY - dragStartPos.y;
+                const sIdx = dragStartPos.idx;
+                if (Math.abs(dx) < 30 && Math.abs(dy) < 30) {
+                    if (selectedIdx === null) setSelectedIdx(sIdx);
+                    else if (selectedIdx === sIdx) setSelectedIdx(null);
+                    else {
+                        if (Math.abs((sIdx%WIDTH)-(selectedIdx%WIDTH)) + Math.abs(Math.floor(sIdx/WIDTH)-Math.floor(selectedIdx/WIDTH)) === 1) swapPieces(selectedIdx, sIdx);
+                        else setSelectedIdx(sIdx);
                     }
-                    setDragStartPos(null);
-                    return;
-                }
-
-                let targetIdx = null;
-                const startIdx = dragStartPos.idx;
-
-                if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                    if (deltaX > 0 && startIdx % WIDTH !== WIDTH - 1) targetIdx = startIdx + 1;
-                    else if (deltaX < 0 && startIdx % WIDTH !== 0) targetIdx = startIdx - 1;
                 } else {
-                    if (deltaY > 0 && Math.floor(startIdx / WIDTH) !== WIDTH - 1) targetIdx = startIdx + WIDTH;
-                    else if (deltaY < 0 && Math.floor(startIdx / WIDTH) !== 0) targetIdx = startIdx - WIDTH;
+                    let t = null;
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        if (dx > 0 && sIdx % WIDTH !== WIDTH-1) t = sIdx + 1;
+                        else if (dx < 0 && sIdx % WIDTH !== 0) t = sIdx - 1;
+                    } else {
+                        if (dy > 0 && Math.floor(sIdx / WIDTH) !== WIDTH-1) t = sIdx + WIDTH;
+                        else if (dy < 0 && Math.floor(sIdx / WIDTH) !== 0) t = sIdx - WIDTH;
+                    }
+                    if (t !== null) swapPieces(sIdx, t); else setSelectedIdx(null);
                 }
-
-                if (targetIdx !== null) swapPieces(startIdx, targetIdx);
-                else setSelectedIdx(null);
-                
                 setDragStartPos(null);
             };
 
             const swapPieces = (idx1, idx2) => {
-                setIsSwapping(true);
-                setSelectedIdx(null); 
-                
-                let newBoard = [...board];
-                [newBoard[idx1], newBoard[idx2]] = [newBoard[idx2], newBoard[idx1]];
-                setBoard(newBoard);
-
+                setIsSwapping(true); setSelectedIdx(null);
+                let nb = [...board]; [nb[idx1], nb[idx2]] = [nb[idx2], nb[idx1]];
+                setBoard(nb);
                 setTimeout(() => {
-                    const matches = checkForMatches(newBoard);
-                    if (matches.length === 0) {
-                        let revertedBoard = [...newBoard];
-                        [revertedBoard[idx1], revertedBoard[idx2]] = [revertedBoard[idx2], revertedBoard[idx1]];
-                        setBoard(revertedBoard);
-                        setIsSwapping(false);
-                    } else {
-                        setIsSwapping(false);
+                    if (checkForMatches(nb).length === 0) {
+                        let rb = [...nb]; [rb[idx1], rb[idx2]] = [rb[idx2], rb[idx1]];
+                        setBoard(rb);
                     }
+                    setIsSwapping(false);
                 }, 250);
             };
 
             const handleShare = async () => {
                 if (navigator.share) {
-                    try {
-                        await navigator.share({
-                            title: 'הניצחון המוחלט',
-                            text: `I scored ${score} in this Match-3 game! Can you beat it?`,
-                            url: window.location.href,
-                        });
-                    } catch (err) {
-                        console.error("Error sharing", err);
-                    }
+                    try { await navigator.share({ title: 'הניצחון המוחלט', text: `I scored ${score} in this Match-3 game! Can you beat it?`, url: window.location.href }); } catch (err) {}
                 } else {
                     navigator.clipboard.writeText(window.location.href);
-                    setToastMessage("Game link copied to clipboard!");
-                    setTimeout(() => setToastMessage(''), 3000);
+                    setToastMessage("הקישור הועתק!"); setTimeout(() => setToastMessage(''), 3000);
                 }
             };
 
             const showHint = (e) => {
-                if (e && e.shiftKey) {
-                    setIsGameOver(true);
-                    return;
-                }
-
+                if (e && e.shiftKey) { setIsGameOver(true); return; }
                 if (isSwapping || isGameOver || isExploding || !board || hintsLeft <= 0 || showInstructions) return;
                 const move = getAvailableMove(board);
-                if (move) {
-                    setHintIndices(move);
-                    setHintsLeft(prev => prev - 1);
-                }
+                if (move) { setHintIndices(move); setHintsLeft(prev => prev - 1); }
             };
 
-            // Reusable Leaderboard List Component
             const LeaderboardList = () => (
                 <div className="w-full bg-slate-950/50 rounded-2xl p-4 border border-slate-800 shadow-inner max-h-[16rem] overflow-y-auto custom-scrollbar">
                     {leaderboard.length === 0 ? (
@@ -644,9 +396,7 @@
                             {leaderboard.map((entry, i) => (
                                 <div key={entry.id} className="flex justify-between items-center bg-slate-800 p-2.5 rounded-lg border border-slate-700/50">
                                     <div className="flex items-center">
-                                        <span className={`font-mono w-6 h-6 flex items-center justify-center rounded-full text-xs mr-3 ${i === 0 ? 'bg-yellow-500 text-black font-black' : i === 1 ? 'bg-slate-300 text-black font-black' : i === 2 ? 'bg-amber-700 text-white font-black' : 'text-slate-500 bg-slate-900'}`}>
-                                            {i + 1}
-                                        </span>
+                                        <span className={`font-mono w-6 h-6 flex items-center justify-center rounded-full text-xs mr-3 ${i === 0 ? 'bg-yellow-500 text-black font-black' : i === 1 ? 'bg-slate-300 text-black font-black' : i === 2 ? 'bg-amber-700 text-white font-black' : 'text-slate-500 bg-slate-900'}`}>{i + 1}</span>
                                         <span className="font-black text-yellow-400 text-lg tracking-wide">{entry.score}</span>
                                     </div>
                                     <span className="text-white font-medium truncate max-w-[150px] ml-2" dir="rtl">{entry.name}</span>
@@ -657,203 +407,69 @@
                 </div>
             );
 
-            if (loading || !board) {
-                return (
-                    <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white font-sans">
-                        <div className="animate-pulse text-2xl font-bold tracking-widest text-blue-400">
-                            LOADING SPRITES...
-                        </div>
-                    </div>
-                );
-            }
+            if (loading || !board) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white font-sans"><div className="animate-pulse text-2xl font-bold tracking-widest text-blue-400">LOADING SPRITES...</div></div>;
 
             return (
-                <div 
-                    className="min-h-screen bg-slate-950 flex flex-col items-center py-10 px-4 font-sans relative"
-                    onClick={unlockAudio}
-                    onTouchStart={unlockAudio}
-                >
-                    
-                    {/* Game Header Image */}
-                    <img 
-                        src="https://raw.githubusercontent.com/doriodorio/match3/main/more_graphics/gameheader.png" 
-                        alt="הניצחון המוחלט" 
-                        className="w-full max-w-[420px] sm:max-w-[500px] mb-8 drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)] object-contain"
-                    />
+                <div className="min-h-screen bg-slate-950 flex flex-col items-center py-10 px-4 font-sans relative" onClick={unlockAudio} onTouchStart={unlockAudio}>
+                    <img src="https://raw.githubusercontent.com/doriodorio/match3/main/more_graphics/gameheader.png" alt="הניצחון המוחלט" className="w-full max-w-[420px] sm:max-w-[500px] mb-8 drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)] object-contain" />
 
                     <div className="w-full max-w-md flex justify-between items-center mb-6 bg-slate-800 p-4 rounded-2xl shadow-lg border border-slate-700">
-                        <div className="flex flex-col">
-                            <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Score</span>
-                            <div className="flex items-center text-white text-3xl font-black">
-                                <TrophyIcon className="w-6 h-6 mr-2 text-yellow-500" />
-                                {score}
-                            </div>
-                        </div>
-                        
+                        <div className="flex flex-col"><span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Score</span><div className="flex items-center text-white text-3xl font-black"><TrophyIcon className="w-6 h-6 mr-2 text-yellow-500" />{score}</div></div>
                         <div className="flex space-x-1 sm:space-x-2">
-                            {/* Leaderboard Toggle Button */}
-                            {firebaseConfig && (
-                                <button 
-                                    onClick={() => setShowLeaderboardModal(true)} 
-                                    className={`p-3 rounded-xl transition-colors shadow bg-yellow-600 hover:bg-yellow-500 text-white`} 
-                                    title="טבלת שיאים"
-                                >
-                                    <TrophyIcon className="w-5 h-5" />
-                                </button>
-                            )}
-
-                            <button 
-                                onClick={() => setSoundEnabled(!soundEnabled)} 
-                                className={`p-3 rounded-xl transition-colors shadow ${soundEnabled ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-400'}`} 
-                                title="Toggle Sound"
-                            >
-                                {soundEnabled ? <Volume2Icon className="w-5 h-5" /> : <VolumeXIcon className="w-5 h-5" />}
-                            </button>
-                            <button 
-                                onClick={showHint} 
-                                className={`relative p-3 rounded-xl transition-colors shadow ${hintsLeft > 0 ? 'bg-pink-600 hover:bg-pink-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`} 
-                                title="Show Hint"
-                            >
-                                <LightbulbIcon className="w-5 h-5" />
-                                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-slate-800">
-                                    {hintsLeft}
-                                </span>
-                            </button>
-                            <button onClick={createBoard} className="p-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition-colors shadow" title="Restart Game">
-                                <RefreshIcon className="w-5 h-5" />
-                            </button>
-                            <button onClick={handleShare} className="p-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-colors shadow-blue-900/50 shadow-lg flex items-center" title="Share Game">
-                                <ShareIcon className="w-5 h-5 mr-0 sm:mr-2" />
-                                <span className="hidden sm:inline font-bold">Share</span>
-                            </button>
+                            <button onClick={() => setShowLeaderboardModal(true)} className="p-3 rounded-xl transition-colors shadow bg-yellow-600 hover:bg-yellow-500 text-white" title="טבלת שיאים"><TrophyIcon className="w-5 h-5" /></button>
+                            <button onClick={() => setSoundEnabled(!soundEnabled)} className={`p-3 rounded-xl transition-colors shadow ${soundEnabled ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-400'}`} title="Toggle Sound">{soundEnabled ? <Volume2Icon className="w-5 h-5" /> : <VolumeXIcon className="w-5 h-5" />}</button>
+                            <button onClick={showHint} className={`relative p-3 rounded-xl transition-colors shadow ${hintsLeft > 0 ? 'bg-pink-600 hover:bg-pink-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`} title="Show Hint"><LightbulbIcon className="w-5 h-5" /><span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-slate-800">{hintsLeft}</span></button>
+                            <button onClick={createBoard} className="p-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition-colors shadow" title="Restart Game"><RefreshIcon className="w-5 h-5" /></button>
+                            <button onClick={handleShare} className="p-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-colors shadow-blue-900/50 shadow-lg flex items-center" title="Share Game"><ShareIcon className="w-5 h-5 mr-0 sm:mr-2" /><span className="hidden sm:inline font-bold">Share</span></button>
                         </div>
                     </div>
 
                     <div className="bg-slate-800 p-3 sm:p-4 rounded-[2rem] shadow-2xl border border-slate-700 relative w-full max-w-[420px] sm:max-w-[500px] overflow-hidden">
                         
-                        {/* Instruction Overlay (First Visit Only) */}
                         {showInstructions && (
                             <div className="absolute inset-0 z-[60] flex items-center justify-center bg-slate-950/80 backdrop-blur-md px-4 animate-in fade-in duration-500 rounded-[2rem]">
                                 <div className="bg-slate-900 border border-slate-700 p-5 sm:p-8 rounded-3xl shadow-[0_0_50px_-12px_rgba(0,0,0,1)] flex flex-col items-center text-center max-w-sm w-full transform animate-in zoom-in-95 duration-300" dir="rtl">
-                                    <h2 className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-4 sm:mb-6 drop-shadow-lg">
-                                        איך משחקים?
-                                    </h2>
-                                    
+                                    <h2 className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-4 sm:mb-6 drop-shadow-lg">איך משחקים?</h2>
                                     <ul className="text-slate-300 mb-6 sm:mb-8 text-sm sm:text-base space-y-3 sm:space-y-4 text-right w-full font-medium">
-                                        <li className="flex items-start gap-2 sm:gap-3">
-                                            <span className="text-xl sm:text-2xl leading-none">👆</span>
-                                            <span><strong>החליקו או לחצו</strong> כדי להחליף בין סמלים.</span>
-                                        </li>
-                                        <li className="flex items-start gap-2 sm:gap-3">
-                                            <span className="text-xl sm:text-2xl leading-none">💥</span>
-                                            <span><strong>התאימו 3</strong> סמלים זהים כדי לפוצץ אותם.</span>
-                                        </li>
-                                        <li className="flex items-start gap-2 sm:gap-3">
-                                            <span className="text-xl sm:text-2xl leading-none">👑</span>
-                                            <span><strong>כוחות מיוחדים:</strong> התאימו דמויות לפיצוץ ענק!</span>
-                                        </li>
+                                        <li className="flex items-start gap-2 sm:gap-3"><span className="text-xl sm:text-2xl leading-none">👆</span><span><strong>החליקו או לחצו</strong> כדי להחליף בין סמלים.</span></li>
+                                        <li className="flex items-start gap-2 sm:gap-3"><span className="text-xl sm:text-2xl leading-none">💥</span><span><strong>התאימו 3</strong> סמלים זהים כדי לפוצץ אותם.</span></li>
+                                        <li className="flex items-start gap-2 sm:gap-3"><span className="text-xl sm:text-2xl leading-none">👑</span><span><strong>כוחות מיוחדים:</strong> התאימו דמויות לפיצוץ ענק!</span></li>
                                     </ul>
-
-                                    <button 
-                                        onClick={dismissInstructions}
-                                        className="flex items-center justify-center px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-2xl font-bold text-lg sm:text-xl transition-all transform hover:scale-105 active:scale-95 shadow-[0_0_40px_-10px_rgba(16,185,129,0.5)] border border-emerald-400/30 w-full"
-                                    >
-                                        <PlayIcon className="w-5 h-5 sm:w-6 sm:h-6 ml-2 sm:ml-3" />
-                                        בואו נשחק!
-                                    </button>
+                                    <button onClick={dismissInstructions} className="flex items-center justify-center px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-2xl font-bold text-lg sm:text-xl transition-all transform hover:scale-105 active:scale-95 shadow-[0_0_40px_-10px_rgba(16,185,129,0.5)] border border-emerald-400/30 w-full"><PlayIcon className="w-5 h-5 sm:w-6 sm:h-6 ml-2 sm:ml-3" />בואו נשחק!</button>
                                 </div>
                             </div>
                         )}
 
-                        {/* Mid-Game Leaderboard Modal */}
                         {showLeaderboardModal && (
                             <div className="absolute inset-0 z-[70] flex items-center justify-center bg-slate-950/80 backdrop-blur-md px-4 animate-in fade-in duration-300 rounded-[2rem]">
                                 <div className="bg-slate-900 border border-slate-700 p-5 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-full transform animate-in zoom-in-95 duration-300 relative">
-                                    <button 
-                                        onClick={() => setShowLeaderboardModal(false)}
-                                        className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
-                                    >
-                                        <XIcon className="w-6 h-6" />
-                                    </button>
-                                    
-                                    <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-amber-300 mb-6 drop-shadow-lg flex items-center gap-2">
-                                        <TrophyIcon className="w-6 h-6 text-yellow-500" />
-                                        טבלת שיאים
-                                    </h2>
-
+                                    <button onClick={() => setShowLeaderboardModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"><XIcon className="w-6 h-6" /></button>
+                                    <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-amber-300 mb-6 drop-shadow-lg flex items-center gap-2"><TrophyIcon className="w-6 h-6 text-yellow-500" />טבלת שיאים</h2>
                                     <LeaderboardList />
                                 </div>
                             </div>
                         )}
 
-                        {/* Game Over Screen */}
                         {isGameOver && !showInstructions && (
                             <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-500 rounded-[2rem] px-4">
                                 <div className="bg-slate-900 border border-slate-700 p-6 sm:p-8 rounded-3xl shadow-[0_0_50px_-12px_rgba(0,0,0,1)] flex flex-col items-center text-center w-full max-w-sm transform animate-in zoom-in-95 duration-300 max-h-full overflow-y-auto custom-scrollbar">
-                                    <h2 className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-yellow-500 mb-2 drop-shadow-2xl">
-                                        GAME OVER
-                                    </h2>
-                                    
+                                    <h2 className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-yellow-500 mb-2 drop-shadow-2xl">GAME OVER</h2>
                                     <div className="flex flex-col items-center justify-center bg-slate-950/50 p-4 rounded-2xl border border-slate-800 mb-6 shadow-inner w-full">
-                                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Final Score</span>
-                                        <div className="flex items-center text-white text-5xl font-black">
-                                            <TrophyIcon className="w-8 h-8 mr-3 text-yellow-500 drop-shadow-lg" />
-                                            {score}
-                                        </div>
+                                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Final Score</span><div className="flex items-center text-white text-5xl font-black"><TrophyIcon className="w-8 h-8 mr-3 text-yellow-500 drop-shadow-lg" />{score}</div>
                                     </div>
-
-                                    {/* Highscore Submission or Display */}
-                                    {firebaseConfig && score > 0 && !isScoreSubmitted ? (
+                                    {score > 0 && !isScoreSubmitted ? (
                                         <form onSubmit={submitScore} className="w-full flex flex-col gap-3 mb-6" dir="rtl">
                                             <h3 className="text-yellow-400 font-bold mb-1">הכנסתם את עצמכם לשיאים?</h3>
-                                            <input 
-                                                type="text" 
-                                                maxLength="15"
-                                                placeholder="הכנס שם לטבלת השיאים..." 
-                                                value={playerName} 
-                                                onChange={e => setPlayerName(e.target.value)}
-                                                className="w-full p-3 rounded-xl bg-slate-950 text-white border border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none text-right font-medium"
-                                                required
-                                            />
-                                            <button type="submit" className="w-full p-3 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-white font-bold rounded-xl shadow-lg transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2">
-                                                <TrophyIcon className="w-5 h-5" />
-                                                שלח תוצאה!
-                                            </button>
-                                            <button type="button" onClick={() => setIsScoreSubmitted(true)} className="text-slate-400 text-sm hover:text-white underline mt-1">
-                                                דלג לטבלת השיאים
-                                            </button>
+                                            <input type="text" maxLength="15" placeholder="הכנס שם לטבלת השיאים..." value={playerName} onChange={e => setPlayerName(e.target.value)} className="w-full p-3 rounded-xl bg-slate-950 text-white border border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none text-right font-medium" required />
+                                            <button type="submit" className="w-full p-3 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-white font-bold rounded-xl shadow-lg transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2"><TrophyIcon className="w-5 h-5" />שלח תוצאה!</button>
                                         </form>
-                                    ) : firebaseConfig ? (
-                                        <div className="w-full mb-6 flex flex-col items-center">
-                                            <h3 className="text-yellow-500 font-black text-lg mb-3 flex items-center gap-2">
-                                                <TrophyIcon className="w-5 h-5" />
-                                                טבלת שיאים עולמית
-                                            </h3>
-                                            <LeaderboardList />
-                                        </div>
-                                    ) : null}
-
+                                    ) : (
+                                        <div className="w-full mb-6 flex flex-col items-center"><h3 className="text-yellow-500 font-black text-lg mb-3 flex items-center gap-2"><TrophyIcon className="w-5 h-5" />טבלת שיאים עולמית</h3><LeaderboardList /></div>
+                                    )}
                                     <div className="flex flex-col gap-3 w-full items-center mt-auto">
-                                        <button onClick={createBoard} className="flex items-center justify-center px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-2xl font-bold text-xl transition-all transform hover:scale-105 active:scale-95 shadow-[0_0_40px_-10px_rgba(59,130,246,0.5)] border border-blue-400/30 w-full">
-                                            <RefreshIcon className="w-6 h-6 mr-3" />
-                                            שחקו שוב
-                                        </button>
-                                        
-                                        <a 
-                                            href="https://www.smkb.ac.il/academic-programs/undergraduate/arts-faculty/design/digital-act/" 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className="flex items-center justify-center px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-2xl font-bold text-base transition-all transform hover:scale-105 active:scale-95 border border-slate-600 w-full mt-2"
-                                        >
-                                            למדו ליצור משחקים
-                                        </a>
-
-                                        {/* Total Design Logo */}
-                                        <img 
-                                            src="https://raw.githubusercontent.com/doriodorio/match3/main/more_graphics/total%20design%20-%20one%20lines%20white.png" 
-                                            alt="Total Design" 
-                                            className="mt-5 max-h-10 sm:max-h-12 w-auto object-contain opacity-70 hover:opacity-100 transition-opacity"
-                                        />
+                                        <button onClick={createBoard} className="flex items-center justify-center px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-2xl font-bold text-xl transition-all transform hover:scale-105 active:scale-95 shadow-[0_0_40px_-10px_rgba(59,130,246,0.5)] border border-blue-400/30 w-full"><RefreshIcon className="w-6 h-6 mr-3" />שחקו שוב</button>
+                                        <a href="https://www.smkb.ac.il/academic-programs/undergraduate/arts-faculty/design/digital-act/" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-2xl font-bold text-base transition-all transform hover:scale-105 active:scale-95 border border-slate-600 w-full mt-2">למדו ליצור משחקים</a>
+                                        <img src="https://raw.githubusercontent.com/doriodorio/match3/main/more_graphics/total%20design%20-%20one%20lines%20white.png" alt="Total Design" className="mt-5 max-h-10 sm:max-h-12 w-auto object-contain opacity-70 hover:opacity-100 transition-opacity" />
                                     </div>
                                 </div>
                             </div>
@@ -864,70 +480,21 @@
                                 const isSelected = selectedIdx === index;
                                 const isMatched = item === null;
                                 const isHinted = hintIndices && (hintIndices[0] === index || hintIndices[1] === index);
-                                
                                 const sprite = (item !== null && sprites && sprites.length > item) ? sprites[item] : null;
                                 const isColor = sprite && sprite.startsWith('#');
                                 const explosion = explosions[index];
-                                
                                 return (
-                                    <div 
-                                        key={index} 
-                                        onPointerDown={(e) => handlePointerDown(e, index)}
-                                        onPointerUp={handlePointerUp}
-                                        onPointerCancel={() => setDragStartPos(null)}
-                                        className={`relative w-full aspect-square cursor-pointer`}
-                                        style={{ touchAction: 'none' }}
-                                    >
-                                        <div
-                                            className={`
-                                                w-full h-full rounded-sm transition-all duration-200 ease-in-out
-                                                ${isMatched ? 'scale-0 opacity-0' : 'scale-100 opacity-100'}
-                                                ${isSelected ? 'ring-2 ring-yellow-400 z-10 scale-110 shadow-xl' : isHinted ? 'ring-4 ring-pink-500 animate-pulse z-10 shadow-[0_0_15px_rgba(236,72,153,0.8)]' : 'hover:scale-105 hover:brightness-110 z-0'}
-                                                ${!isMatched && !isColor ? 'bg-slate-800' : ''}
-                                            `}
-                                            style={{
-                                                backgroundImage: sprite && !isColor ? `url(${sprite})` : 'none',
-                                                backgroundColor: isColor ? sprite : 'transparent',
-                                                backgroundSize: '100%',
-                                                backgroundPosition: 'center',
-                                                backgroundRepeat: 'no-repeat',
-                                                boxShadow: isColor ? 'inset 0 -2px 0 rgba(0,0,0,0.2)' : 'none'
-                                            }}
-                                        />
-                                        
-                                        {explosion && (
-                                            <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none animate-explode">
-                                                {explosion === 'fallback' ? (
-                                                    <span className="text-3xl sm:text-4xl drop-shadow-lg">💥</span>
-                                                ) : (
-                                                    <div 
-                                                        className="w-[150%] h-[150%]"
-                                                        style={{
-                                                            backgroundImage: `url(${explosion})`,
-                                                            backgroundSize: 'contain',
-                                                            backgroundPosition: 'center',
-                                                            backgroundRepeat: 'no-repeat'
-                                                        }}
-                                                    />
-                                                )}
-                                            </div>
-                                        )}
+                                    <div key={index} onPointerDown={(e) => handlePointerDown(e, index)} onPointerUp={handlePointerUp} onPointerCancel={() => setDragStartPos(null)} className="relative w-full aspect-square cursor-pointer" style={{ touchAction: 'none' }}>
+                                        <div className={`w-full h-full rounded-sm transition-all duration-200 ease-in-out ${isMatched ? 'scale-0 opacity-0' : 'scale-100 opacity-100'} ${isSelected ? 'ring-2 ring-yellow-400 z-10 scale-110 shadow-xl' : isHinted ? 'ring-4 ring-pink-500 animate-pulse z-10 shadow-[0_0_15px_rgba(236,72,153,0.8)]' : 'hover:scale-105 hover:brightness-110 z-0'} ${!isMatched && !isColor ? 'bg-slate-800' : ''}`} style={{ backgroundImage: sprite && !isColor ? `url(${sprite})` : 'none', backgroundColor: isColor ? sprite : 'transparent', backgroundSize: '100%', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', boxShadow: isColor ? 'inset 0 -2px 0 rgba(0,0,0,0.2)' : 'none' }} />
+                                        {explosion && <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none animate-explode">{explosion === 'fallback' ? <span className="text-3xl sm:text-4xl drop-shadow-lg">💥</span> : <div className="w-[150%] h-[150%]" style={{ backgroundImage: `url(${explosion})`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} />}</div>}
                                     </div>
                                 );
                             })}
                         </div>
                     </div>
 
-                    <div className={`
-                        fixed bottom-10 px-6 py-3 bg-green-500 text-white font-bold rounded-full shadow-2xl transition-all duration-300 z-50
-                        ${toastMessage ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}
-                    `}>
-                        {toastMessage}
-                    </div>
-
-                    <div className="mt-8 text-slate-500 text-sm max-w-md text-center">
-                        <p>Swipe or tap two adjacent tiles to swap them. Match 3 or more of the same icon to score points.</p>
-                    </div>
+                    <div className={`fixed bottom-10 px-6 py-3 bg-green-500 text-white font-bold rounded-full shadow-2xl transition-all duration-300 z-50 ${toastMessage ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}>{toastMessage}</div>
+                    <div className="mt-8 text-slate-500 text-sm max-w-md text-center"><p>Swipe or tap two adjacent tiles to swap them. Match 3 or more of the same icon to score points.</p></div>
                 </div>
             );
         }
