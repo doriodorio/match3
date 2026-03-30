@@ -167,16 +167,29 @@
                 setShowInstructions(false); unlockAudio();
             };
 
+            // Security Function to prevent malicious inputs
+            const sanitizeInput = (text) => {
+                if (!text) return "";
+                // Remove HTML brackets and limit to exactly 15 characters to prevent injection and layout breaking
+                return text.replace(/[<>]/g, '').trim().substring(0, 15);
+            };
+
             const submitScore = async (e) => {
                 e.preventDefault();
                 if (!user) {
                     setToastMessage("שגיאה: אינך מחובר. ודאו שהפעלתם Anonymous Auth.");
                     setTimeout(() => setToastMessage(''), 5000); return;
                 }
-                if (!db || !playerName.trim() || isScoreSubmitted) return;
+                
+                const safeName = sanitizeInput(playerName);
+                if (!db || !safeName || isScoreSubmitted) return;
+
                 try {
                     await addDoc(collection(db, 'artifacts', globalAppId, 'public', 'data', 'leaderboard'), {
-                        name: playerName.trim(), score: score, timestamp: Date.now(), userId: user.uid
+                        name: safeName, 
+                        score: score, 
+                        timestamp: Date.now(), 
+                        userId: user.uid
                     });
                     setIsScoreSubmitted(true);
                 } catch (error) {
