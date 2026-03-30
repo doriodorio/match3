@@ -306,9 +306,19 @@
                             const idx = sprites.findIndex(u => u?.includes(id));
                             return idx !== -1 && matches.some(m => cb[m] === idx);
                         };
-                        if (hasId('icons2_12') && soundEnabled) { audioSpectacular.currentTime=0; audioSpectacular.play().catch(()=>{}); }
-                        if (hasId('icons2_11') && soundEnabled) { audioVictory.currentTime=0; audioVictory.play().catch(()=>{}); }
-                        if (hasId('icons2_13') && soundEnabled) { audioBeSafe.currentTime=0; audioBeSafe.play().catch(()=>{}); }
+                        
+                        if (soundEnabled) {
+                            if (hasId('icons2_12')) {
+                                audioVictory.pause(); audioBeSafe.pause();
+                                audioSpectacular.currentTime = 0; audioSpectacular.play().catch(()=>{});
+                            } else if (hasId('icons2_11')) {
+                                audioSpectacular.pause(); audioBeSafe.pause();
+                                audioVictory.currentTime = 0; audioVictory.play().catch(()=>{});
+                            } else if (hasId('icons2_13')) {
+                                audioSpectacular.pause(); audioVictory.pause();
+                                audioBeSafe.currentTime = 0; audioBeSafe.play().catch(()=>{});
+                            }
+                        }
                         
                         setIsExploding(true);
                         setScore(s => s + matches.length * 10);
