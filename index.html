@@ -46,28 +46,20 @@
 <body>
     <div id="root"></div>
 
+    <!-- Note: using data-type="module" so we can import Firebase libraries directly -->
     <script type="text/babel" data-type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const { useState, useEffect, useCallback } = React;
 
-        // --- Firebase Configuration ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyCMi0mRQhlXEVnH47fNcC7KewdWeJA79Vw",
-            authDomain: "finalvictory-12aef.firebaseapp.com",
-            projectId: "finalvictory-12aef",
-            storageBucket: "finalvictory-12aef.firebasestorage.app",
-            messagingSenderId: "949790636961",
-            appId: "1:949790636961:web:00e0149a61ebbe7859e9e0",
-            measurementId: "G-5YWTWMQEWW"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const globalAppId = 'match3-global';
+        // --- Firebase Initialization ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const app = firebaseConfig ? initializeApp(firebaseConfig) : null;
+        const auth = app ? getAuth(app) : null;
+        const db = app ? getFirestore(app) : null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'match3-default-app-id';
 
         // SVG Icons
         const TrophyIcon = ({ className }) => (
@@ -109,7 +101,6 @@
 
         function unlockAudio() {
             if (isAudioUnlocked) return;
-            // Play and immediately pause to "unlock" the audio context
             audioSpectacular.play().then(() => { audioSpectacular.pause(); audioSpectacular.currentTime = 0; }).catch(() => {});
             audioVictory.play().then(() => { audioVictory.pause(); audioVictory.currentTime = 0; }).catch(() => {});
             isAudioUnlocked = true;
@@ -144,9 +135,14 @@
 
             // 1. Initialize Firebase Auth
             useEffect(() => {
+                if (!auth) return;
                 const initAuth = async () => {
                     try {
-                        await signInAnonymously(auth);
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
                     } catch (error) {
                         console.error("Auth init error:", error);
                     }
@@ -160,11 +156,11 @@
             // 2. Fetch Leaderboard Data
             useEffect(() => {
                 if (!user || !db) return;
-                const leaderboardRef = collection(db, 'artifacts', globalAppId, 'public', 'data', 'leaderboard');
+                const leaderboardRef = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
                 
                 const unsubscribe = onSnapshot(leaderboardRef, (snapshot) => {
                     const scores = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    // Sort locally
+                    // Sort locally as per RULE 2
                     scores.sort((a, b) => b.score - a.score);
                     setLeaderboard(scores.slice(0, 10)); // Top 10
                 }, (error) => {
@@ -184,7 +180,7 @@
             const dismissInstructions = () => {
                 localStorage.setItem('match3_hasSeenInstructions', 'true');
                 setShowInstructions(false);
-                unlockAudio(); // Perfect time to unlock audio on mobile!
+                unlockAudio();
             };
 
             const submitScore = async (e) => {
@@ -192,7 +188,7 @@
                 if (!user || !db || !playerName.trim() || isScoreSubmitted) return;
                 
                 try {
-                    const leaderboardRef = collection(db, 'artifacts', globalAppId, 'public', 'data', 'leaderboard');
+                    const leaderboardRef = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
                     await addDoc(leaderboardRef, {
                         name: playerName.trim(),
                         score: score,
@@ -245,12 +241,10 @@
                 if (allAvailableSprites.length === 0) return;
 
                 let activeSprites = allAvailableSprites;
-                // Limit the maximum number of distinct items on the board to 9
                 if (allAvailableSprites.length > 9) {
                     const shuffled = [...allAvailableSprites].sort(() => 0.5 - Math.random());
                     activeSprites = shuffled.slice(0, 9);
                     
-                    // Guarantee Bibi or Trump is in the active list
                     const hasBibi = activeSprites.some(url => url.includes('icons2_11'));
                     const hasTrump = activeSprites.some(url => url.includes('icons2_12'));
                     
@@ -294,7 +288,7 @@
                 setHintIndices(null);
                 setIsExploding(false);
                 setExplosions({});
-                setHintsLeft(3); // Reset hints
+                setHintsLeft(3);
                 setIsScoreSubmitted(false);
                 setPlayerName('');
             }, [allAvailableSprites]);
@@ -627,7 +621,6 @@
             };
 
             const showHint = (e) => {
-                // Secret instant lose cheat
                 if (e && e.shiftKey) {
                     setIsGameOver(true);
                     return;
@@ -699,13 +692,15 @@
                         
                         <div className="flex space-x-1 sm:space-x-2">
                             {/* Leaderboard Toggle Button */}
-                            <button 
-                                onClick={() => setShowLeaderboardModal(true)} 
-                                className={`p-3 rounded-xl transition-colors shadow bg-yellow-600 hover:bg-yellow-500 text-white`} 
-                                title="טבלת שיאים"
-                            >
-                                <TrophyIcon className="w-5 h-5" />
-                            </button>
+                            {firebaseConfig && (
+                                <button 
+                                    onClick={() => setShowLeaderboardModal(true)} 
+                                    className={`p-3 rounded-xl transition-colors shadow bg-yellow-600 hover:bg-yellow-500 text-white`} 
+                                    title="טבלת שיאים"
+                                >
+                                    <TrophyIcon className="w-5 h-5" />
+                                </button>
+                            )}
 
                             <button 
                                 onClick={() => setSoundEnabled(!soundEnabled)} 
@@ -808,7 +803,7 @@
                                     </div>
 
                                     {/* Highscore Submission or Display */}
-                                    {score > 0 && !isScoreSubmitted ? (
+                                    {firebaseConfig && score > 0 && !isScoreSubmitted ? (
                                         <form onSubmit={submitScore} className="w-full flex flex-col gap-3 mb-6" dir="rtl">
                                             <h3 className="text-yellow-400 font-bold mb-1">הכנסתם את עצמכם לשיאים?</h3>
                                             <input 
@@ -828,7 +823,7 @@
                                                 דלג לטבלת השיאים
                                             </button>
                                         </form>
-                                    ) : (
+                                    ) : firebaseConfig ? (
                                         <div className="w-full mb-6 flex flex-col items-center">
                                             <h3 className="text-yellow-500 font-black text-lg mb-3 flex items-center gap-2">
                                                 <TrophyIcon className="w-5 h-5" />
@@ -836,7 +831,7 @@
                                             </h3>
                                             <LeaderboardList />
                                         </div>
-                                    )}
+                                    ) : null}
 
                                     <div className="flex flex-col gap-3 w-full items-center mt-auto">
                                         <button onClick={createBoard} className="flex items-center justify-center px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-2xl font-bold text-xl transition-all transform hover:scale-105 active:scale-95 shadow-[0_0_40px_-10px_rgba(59,130,246,0.5)] border border-blue-400/30 w-full">
