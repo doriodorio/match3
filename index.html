@@ -90,16 +90,19 @@
         const EXPLOSION_GIF_URL = 'https://raw.githubusercontent.com/doriodorio/match3/main/effecticons/transexplosion.gif';
         const SPECTACULAR_SOUND_URL = 'https://raw.githubusercontent.com/doriodorio/match3/main/sounds/spectacular.mp3';
         const VICTORY_SOUND_URL = 'https://raw.githubusercontent.com/doriodorio/match3/main/sounds/victory.mp3';
+        const BESAFE_SOUND_URL = 'https://raw.githubusercontent.com/doriodorio/match3/main/sounds/besafe.mp3';
         const FALLBACK_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
 
         const audioSpectacular = new Audio(SPECTACULAR_SOUND_URL);
         const audioVictory = new Audio(VICTORY_SOUND_URL);
+        const audioBeSafe = new Audio(BESAFE_SOUND_URL);
         let isAudioUnlocked = false;
 
         function unlockAudio() {
             if (isAudioUnlocked) return;
             audioSpectacular.play().then(() => { audioSpectacular.pause(); audioSpectacular.currentTime = 0; }).catch(() => {});
             audioVictory.play().then(() => { audioVictory.pause(); audioVictory.currentTime = 0; }).catch(() => {});
+            audioBeSafe.play().then(() => { audioBeSafe.pause(); audioBeSafe.currentTime = 0; }).catch(() => {});
             isAudioUnlocked = true;
         }
 
@@ -305,6 +308,7 @@
                         };
                         if (hasId('icons2_12') && soundEnabled) { audioSpectacular.currentTime=0; audioSpectacular.play().catch(()=>{}); }
                         if (hasId('icons2_11') && soundEnabled) { audioVictory.currentTime=0; audioVictory.play().catch(()=>{}); }
+                        if (hasId('icons2_13') && soundEnabled) { audioBeSafe.currentTime=0; audioBeSafe.play().catch(()=>{}); }
                         
                         setIsExploding(true);
                         setScore(s => s + matches.length * 10);
