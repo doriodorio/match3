@@ -22,6 +22,15 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
+    <!-- Fix for Babel JSX Runtime in browser environments -->
+    <script type="importmap">
+    {
+        "imports": {
+            "react/jsx-runtime": "data:text/javascript;base64,ZXhwb3J0IGNvbnN0IGpzeCA9IHdpbmRvdy5SZWFjdC5jcmVhdGVFbGVtZW50OyBleHBvcnQgY29uc3QganN4cyA9IHdpbmRvdy5SZWFjdC5jcmVhdGVFbGVtZW50OyBleHBvcnQgY29uc3QgRnJhZ21lbnQgPSB3aW5kb3cuUmVhY3QuRnJhZ21lbnQ7"
+        }
+    }
+    </script>
+
     <!-- Load Babel for JSX compiling in the browser -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
