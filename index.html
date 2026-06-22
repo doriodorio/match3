@@ -22,17 +22,17 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
-    <!-- Fix for Babel JSX Runtime in browser environments -->
-    <script type="importmap">
-    {
-        "imports": {
-            "react/jsx-runtime": "data:text/javascript;base64,ZXhwb3J0IGNvbnN0IGpzeCA9IHdpbmRvdy5SZWFjdC5jcmVhdGVFbGVtZW50OyBleHBvcnQgY29uc3QganN4cyA9IHdpbmRvdy5SZWFjdC5jcmVhdGVFbGVtZW50OyBleHBvcnQgY29uc3QgRnJhZ21lbnQgPSB3aW5kb3cuUmVhY3QuRnJhZ21lbnQ7"
-        }
-    }
-    </script>
-
     <!-- Load Babel for JSX compiling in the browser -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Fix for Babel JSX Runtime: Register Classic React Preset -->
+    <script>
+        Babel.registerPreset("my-react", {
+            presets: [
+                [Babel.availablePresets["react"], { "runtime": "classic" }]
+            ]
+        });
+    </script>
 
     <style>
         body { margin: 0; background-color: #020617; touch-action: manipulation; }
@@ -53,7 +53,7 @@
 <body>
     <div id="root"></div>
 
-    <script type="text/babel" data-type="module">
+    <script type="text/babel" data-type="module" data-presets="my-react">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -219,6 +219,7 @@
                     else setAllAvailableSprites(FALLBACK_COLORS);
                 } catch (err) {
                     setAllAvailableSprites(FALLBACK_COLORS);
+                    console.warn("GitHub API rate limit reached or error fetching sprites. Using fallback colors.");
                 } finally {
                     setLoading(false);
                 }
