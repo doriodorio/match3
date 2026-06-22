@@ -100,7 +100,18 @@
         const SPECTACULAR_SOUND_URL = 'https://raw.githubusercontent.com/doriodorio/match3/main/sounds/spectacular.mp3';
         const VICTORY_SOUND_URL = 'https://raw.githubusercontent.com/doriodorio/match3/main/sounds/victory.mp3';
         const BESAFE_SOUND_URL = 'https://raw.githubusercontent.com/doriodorio/match3/main/sounds/besafe.mp3';
-        const FALLBACK_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+        
+        // Fallback sprites array in case GitHub API rate limits us
+        const FALLBACK_SPRITES = [
+            'https://raw.githubusercontent.com/doriodorio/match3/main/gameicons/icons2_11.png',
+            'https://raw.githubusercontent.com/doriodorio/match3/main/gameicons/icons2_12.png',
+            'https://raw.githubusercontent.com/doriodorio/match3/main/gameicons/icons2_13.png',
+            'https://raw.githubusercontent.com/doriodorio/match3/main/gameicons/icons2_27.png',
+            'https://raw.githubusercontent.com/doriodorio/match3/main/gameicons/icons2_30.png',
+            'https://raw.githubusercontent.com/doriodorio/match3/main/gameicons/icons2_01.png',
+            'https://raw.githubusercontent.com/doriodorio/match3/main/gameicons/icons2_02.png',
+            'https://raw.githubusercontent.com/doriodorio/match3/main/gameicons/icons2_03.png'
+        ];
 
         const audioSpectacular = new Audio(SPECTACULAR_SOUND_URL);
         const audioVictory = new Audio(VICTORY_SOUND_URL);
@@ -176,10 +187,8 @@
                 setShowInstructions(false); unlockAudio();
             };
 
-            // Security Function to prevent malicious inputs
             const sanitizeInput = (text) => {
                 if (!text) return "";
-                // Remove HTML brackets and limit to exactly 15 characters to prevent injection and layout breaking
                 return text.replace(/[<>]/g, '').trim().substring(0, 15);
             };
 
@@ -215,11 +224,14 @@
                     const files = await response.json();
                     const imageFiles = files.filter(f => f.type === 'file' && f.name.match(/\.(png|jpe?g|gif|webp|svg)$/i)).sort((a, b) => a.name.localeCompare(b.name));
                     const loadedSprites = imageFiles.map(f => f.download_url);
-                    if (loadedSprites.length >= 3) setAllAvailableSprites(loadedSprites);
-                    else setAllAvailableSprites(FALLBACK_COLORS);
+                    if (loadedSprites.length >= 3) {
+                        setAllAvailableSprites(loadedSprites);
+                    } else {
+                        setAllAvailableSprites(FALLBACK_SPRITES);
+                    }
                 } catch (err) {
-                    setAllAvailableSprites(FALLBACK_COLORS);
-                    console.warn("GitHub API rate limit reached or error fetching sprites. Using fallback colors.");
+                    console.warn("GitHub API rate limit reached or error fetching sprites. Using fallback sprites.");
+                    setAllAvailableSprites(FALLBACK_SPRITES);
                 } finally {
                     setLoading(false);
                 }
